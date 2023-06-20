@@ -581,8 +581,7 @@ public class ConcurrentHashMap<K, V> extends AbstractMap<K, V>
                 lock();
                 try {
                     HashEntry<K,V>[] tab = table;
-                    for (int i = 0; i < tab.length ; i++)
-                        tab[i] = null;
+                    Arrays.fill(tab, null);
                     ++modCount;
                     count = 0; // write-volatile
                 } finally {

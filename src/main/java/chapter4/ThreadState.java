@@ -1,7 +1,6 @@
 package chapter4;
 
 import chapter4.utils.SleepUtils;
-import javafx.scene.effect.Blend;
 
 public class ThreadState {
     public static void main(String[] args) {
@@ -48,4 +47,5 @@ public class ThreadState {
             }
         }
     }
+
  }
