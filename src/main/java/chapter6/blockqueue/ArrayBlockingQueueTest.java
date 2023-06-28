@@ -119,7 +119,13 @@ public class ArrayBlockingQueueTest<E> extends AbstractQueue<E>
 
     @Override
     public int remainingCapacity() {
-        return items.length - count;
+        final ReentrantLock lock = this.lock;
+        lock.lock();
+        try {
+            return items.length - count;
+        } finally {
+            lock.unlock();
+        }
     }
 
     @Override
@@ -242,7 +248,11 @@ public class ArrayBlockingQueueTest<E> extends AbstractQueue<E>
                 E x = lastItem;
                 lastItem = null;
                 if (x != null && x == itemAt(i)) {
+                    boolean removeHead = (i == removeIndex);
                     removeAt(i);
+                    if (!removeHead) {
+                        nextIndex = dec(nextIndex);
+                    }
                 }
                 items[i] = null;
 
@@ -254,17 +264,25 @@ public class ArrayBlockingQueueTest<E> extends AbstractQueue<E>
 
         private void removeAt(int i) {
             final Object[] items = ArrayBlockingQueueTest.this.items;
-            for (;;) {
-                int nexti = inc(i);
-                if (nexti != addIndex) {
-                    items[i] = itemAt(nexti);
-                    i = nexti;
-                } else {
-                    items[i] = null;
-                    addIndex = i;
-                    break;
+            if (i == removeIndex) {
+                items[removeIndex] = null;
+                removeIndex = inc(removeIndex);
+            } else {
+
+                for (;;) {
+                    int nexti = inc(i);
+                    if (nexti != addIndex) {
+                        items[i] = itemAt(nexti);
+                        i = nexti;
+                    } else {
+                        items[i] = null;
+                        addIndex = i;
+                        break;
+                    }
                 }
             }
+            count--;
+            notFull.signal();
         }
 
         private int inc(int i) {
@@ -275,5 +293,9 @@ public class ArrayBlockingQueueTest<E> extends AbstractQueue<E>
         public void forEachRemaining(Consumer<? super E> action) {
             Iterator.super.forEachRemaining(action);
         }
+    }
+
+    private int dec(int i) {
+        return (i == 0 ? items.length : i) -1;
     }
 }
