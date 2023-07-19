@@ -7,7 +7,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
-public class ArrayBlockingQueueTest<E> extends AbstractQueue<E>
+public class MyArrayBlockingQueue<E> extends AbstractQueue<E>
         implements BlockingQueue<E>, java.io.Serializable  {
 
     int count, removeIndex, addIndex;
@@ -18,7 +18,7 @@ public class ArrayBlockingQueueTest<E> extends AbstractQueue<E>
     Condition notEmpty;
     Condition notFull;
 
-    public ArrayBlockingQueueTest(int capacity, boolean fair) {
+    public MyArrayBlockingQueue(int capacity, boolean fair) {
         this.items = new Object[capacity];
         this.lock = new ReentrantLock(fair);
         this.notEmpty = lock.newCondition();
@@ -191,7 +191,7 @@ public class ArrayBlockingQueueTest<E> extends AbstractQueue<E>
         E lastItem;
 
         public Itr() {
-            final ReentrantLock lock = ArrayBlockingQueueTest.this.lock;
+            final ReentrantLock lock = MyArrayBlockingQueue.this.lock;
             lock.lock();
             try {
 
@@ -213,7 +213,7 @@ public class ArrayBlockingQueueTest<E> extends AbstractQueue<E>
 
         @Override
         public E next() {
-            final ReentrantLock lock = ArrayBlockingQueueTest.this.lock;
+            final ReentrantLock lock = MyArrayBlockingQueue.this.lock;
             lock.lock();
             try {
                 if (remaining <= 0) {
@@ -237,7 +237,7 @@ public class ArrayBlockingQueueTest<E> extends AbstractQueue<E>
 
         @Override
         public void remove() {
-            final ReentrantLock lock = ArrayBlockingQueueTest.this.lock;
+            final ReentrantLock lock = MyArrayBlockingQueue.this.lock;
             lock.lock();
             try {
                 int i = lastIndex;
@@ -263,7 +263,7 @@ public class ArrayBlockingQueueTest<E> extends AbstractQueue<E>
         }
 
         private void removeAt(int i) {
-            final Object[] items = ArrayBlockingQueueTest.this.items;
+            final Object[] items = MyArrayBlockingQueue.this.items;
             if (i == removeIndex) {
                 items[removeIndex] = null;
                 removeIndex = inc(removeIndex);
