@@ -545,7 +545,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
                 // item != p 表示该节点没有被取消，只有被取消时，item才会设置为item所属的节点
                 // (item != null) 表示元素不为空，(item != null ) == isData 这个语句表示元素不为空应该和isData属性一致
                 // item 如果为null isData为false，代表获取节点；item如果不为null，isData为true，代表放节点。正常情况是一致的
-                // 那么什么时候不一致呢，当获取节点线程取到队列中某个元素时，就会将该元素替换为null，表示此元素已经被某个线程获取了
+                // 那么什么时候不一致呢，当获取节点线程取到队列中某个元素时，就会将该元素替换为null（或者阻塞放元素的时候，尝试将被阻塞的线程节点中放入数据，由null变成有数据），表示此元素已经被某个线程获取了
                 // 所以这句语句后面的unmatched表示，不管是取节点还是放节点，只要满足该语句，就表示该节点还在队列中，并没没有得到或者被线程取走数据
                 if (item != p && (item != null) == isData) { // unmatched
                     if (isData == haveData)   // can't match
@@ -586,6 +586,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
                         return this.<E>cast(item);
                     }
                 }
+                // 如果n等于p，表示该元素已经出队，
                 Node n = p.next;
                 p = (p != n) ? n : (h = head); // Use head if p offlist
             }
@@ -594,6 +595,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
                 if (s == null)
                     s = new Node(e, haveData);
                 Node pred = tryAppend(s, haveData);
+                // 如果前置节点为null，表示mode不一致，需要进行match
                 if (pred == null)
                     continue retry;           // lost race vs opposite mode
                 if (how != ASYNC)
@@ -616,23 +618,41 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
         for (Node t = tail, p = t;;) {        // move p to last node and append
             Node n, u;                        // temps for reads of next & tail
             if (p == null && (p = head) == null) {
+                // p 和head都为null，表示空节点，直接设置头节点
                 if (casHead(null, s))
+                    // 设置成功则表示初始化队列成功
                     return s;                 // initialize
             }
             else if (p.cannotPrecede(haveData))
+                // 设置头节点失败，先判断是否能够入队，入队的标准是不同mode的节点
                 return null;                  // lost race vs opposite mode
             else if ((n = p.next) != null)    // not last; keep traversing
                 p = p != t && t != (u = tail) ? (t = u) : // stale tail
                     (p != n) ? n : null;      // restart if off list
+            // 这里分为俩种情况
+            // 1. 如果p是从tail节点开始的，那么这里就是找到真实的尾节点node.next == null的node（三元表达式后面的）
+            // 2. 如果p是从head节点开始的，那么这里就是找到tail节点（三元表达式前面的）
+            // 3. p == null 表示尾部节点已经出队，需要从head开始遍历
             else if (!p.casNext(null, s))
+                // 入队的首要条件是p的next为null。否则往下面继续遍历
                 p = p.next;                   // re-read on CAS failure
             else {
                 if (p != t) {                 // update if slack now >= 2
+                    // 这里的t一般指代tail节点，而p节点为真实的尾节点，p != t表示真实尾节点不在tail上，需要进行设置尾节点
                     while ((tail != t || !casTail(t, s)) &&
                            (t = tail)   != null &&
                            (s = t.next) != null && // advance and retry
                            (s = s.next) != null && s != t);
+                    // 全部为true表示需要进行死循环设置tail节点，为false表示无需设置，表述需要理解
+                    // (tail != t || !casTail(t, s)) 表示t不等于tail节点或者设置tai失败（整体为true）需要进行重试，如果tail !=t 为true也就是t不等于tail直接判断后面的，如果为false，则表示相等
+                    // 如果!casTail为true，则表示cas失败，需要重试
+                    // (t = tail)   != null tail不为null，不是空节点或者只有一个节点
+                    // (s = t.next) != null 这里因为s已经入队了，已经不需要了，所以将t.next赋值给s并且不为null表示tail后续有节点存在
+                    // (s = s.next) != null && s != t 如果 s = s.next != null 表示s的next如果一旦为null就不需要进行设置tail节点，这里体现了slack>=2的特性
+                    // 至于s!=t则表示可以理解为如果s==t ，那么s.next == t == tail 可以想象 tail -> tail.next == s -> s.next == s -> tail
+                    // 可以理解为tail节点已经出队了，无需重新设置tail
                 }
+                // 返回前置节点
                 return p;
             }
         }
@@ -667,6 +687,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
             }
             if ((w.isInterrupted() || (timed && nanos <= 0)) &&
                     s.casItem(e, s)) {       // cancel
+
                 unsplice(pred, s);
                 return e;
             }

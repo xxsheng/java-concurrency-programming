@@ -47,7 +47,7 @@ public class LinkedTransferQueueTest {
 
     @Test
     public void testTransfer() throws InterruptedException {
-        queue.transfer("22");
+        System.out.println(queue.tryTransfer("22"));
     }
 
     @Test
@@ -109,4 +109,78 @@ public class LinkedTransferQueueTest {
 
         System.out.println("--");
     }
+
+    @Test
+    public void testTryAppend() {
+        new Thread(() -> {
+            System.out.println("----");
+            queue.add("2221");
+        }).start();
+
+        new Thread(() -> {
+            System.out.println("----");
+            queue.add("2223");
+        }).start();
+
+        new Thread(() -> {
+            System.out.println("----");
+            queue.add("2224");
+        }).start();
+
+        new Thread(() -> {
+            System.out.println("----");
+            queue.add("2225");
+        }).start();
+
+        new Thread(() -> {
+            System.out.println("----");
+            queue.add("2226");
+        }).start();
+
+        new Thread(() -> {
+            System.out.println("----");
+            queue.add("2226");
+        }).start();
+
+        new Thread(() -> {
+            System.out.println("----");
+            try {
+                queue.take();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+
+        new Thread(() -> {
+            System.out.println("----");
+            try {
+                queue.take();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+
+        new Thread(() -> {
+            System.out.println("----");
+            try {
+                queue.take();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+
+        new Thread(() -> {
+            System.out.println("----");
+            try {
+                queue.take();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+
+        System.out.println("----");
+
+
+    }
+
 }

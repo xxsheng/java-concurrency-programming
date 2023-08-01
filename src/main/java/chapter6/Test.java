@@ -27,7 +27,8 @@ public class Test {
     public void test3() throws InterruptedException {
         SynchronousQueue<String> strings = new SynchronousQueue<>();
 //        System.out.println(strings.take());
-        strings.put("ppp" );
+//        strings.put("ppp" );
         System.out.println("---");
+        System.out.println(TimeUnit.DAYS.toHours(1));
     }
 }
