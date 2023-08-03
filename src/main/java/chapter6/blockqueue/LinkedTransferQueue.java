@@ -671,6 +671,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
      * @return matched item, or e if unmatched on interrupt or timeout
      */
     private E awaitMatch(Node s, Node pred, E e, boolean timed, long nanos) {
+        // 如果是超时等待的话，就计算出纳秒时间
         long lastTime = timed ? System.nanoTime() : 0L;
         Thread w = Thread.currentThread();
         int spins = -1; // initialized after first item and cancel checks
@@ -679,7 +680,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
         for (;;) {
             Object item = s.item;
             if (item != e) {                  // matched
-                // item不等于e表示已经获得match
+                // item不等于e表示已经获得match（唤醒）
                 // assert item != s;
                 // 唤醒第一件事就是清除自身引用，加速垃圾回收
                 s.forgetContents();           // avoid garbage
@@ -687,31 +688,38 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
             }
             if ((w.isInterrupted() || (timed && nanos <= 0)) &&
                     s.casItem(e, s)) {       // cancel
-
+                // 如果节点已经被中断或者已经超时则直接取消节点
                 unsplice(pred, s);
                 return e;
             }
 
+            // spins默认为-1
             if (spins < 0) {                  // establish spins at/near front
                 if ((spins = spinsFor(pred, s.isData)) > 0)
+                    // 一般多核情况下，spins都是大于0de
                     randomYields = ThreadLocalRandom.current();
             }
             else if (spins > 0) {             // spin
                 if (--spins == 0)
+                    // 当最后一次自旋，尝试调整head的path
                     shortenHeadPath();        // reduce slack before blocking
                 else if (randomYields.nextInt(CHAINED_SPINS) == 0)
+                    // 释放cpu资源，变成就绪状态，等待被调用
                     Thread.yield();           // occasionally yield
             }
             else if (s.waiter == null) {
+                // 如果当前节点没有线程waiter就进行设置
                 s.waiter = w;                 // request unpark then recheck
             }
             else if (timed) {
+                // 超时等待
                 long now = System.nanoTime();
                 if ((nanos -= now - lastTime) > 0)
                     LockSupport.parkNanos(this, nanos);
                 lastTime = now;
             }
             else {
+                // 完全等待
                 LockSupport.park(this);
                 s.waiter = null;
                 spins = -1;                   // spin if front upon wakeup
@@ -724,12 +732,16 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
      * data mode. See above for explanation.
      */
     private static int spinsFor(Node pred, boolean haveData) {
+        // MP代表多核 ，pred在这里不会为null。这里需要计算出当前节点自旋的次数，基于pred节点来计算
         if (MP && pred != null) {
+            // 如果前节点mode和当前不一致，理论上说明pred已经被match，当前节点是队首
             if (pred.isData != haveData)      // phase change
                 return FRONT_SPINS + CHAINED_SPINS;
             if (pred.isMatched())             // probably at front
+                // 前提是pred的mode和当前相等，并且pred已经被match
                 return FRONT_SPINS;
             if (pred.waiter == null)          // pred apparently spinning
+                // pred的mode和当前一致，并且没有被match，还在自旋中
                 return CHAINED_SPINS;
         }
         return 0;
