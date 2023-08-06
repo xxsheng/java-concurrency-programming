@@ -184,5 +184,25 @@ public class LinkedTransferQueueTest {
 
     }
 
+    @Test
+    public void testUnSplice() throws InterruptedException {
+        queue.tryTransfer("22", 30, TimeUnit.SECONDS);
+    }
+
+    @Test
+    public void testIsEmpty() throws InterruptedException {
+        new Thread(() -> {
+            try {
+                queue.take();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+
+        TimeUnit.SECONDS.sleep(10);
+
+        System.out.println(queue.isEmpty());
+    }
+
 
 }

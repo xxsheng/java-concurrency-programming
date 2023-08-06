@@ -585,7 +585,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
                         LockSupport.unpark(p.waiter);
                         return this.<E>cast(item);
                     }
-                }
+                } // matched
                 // 如果n等于p，表示该元素已经出队，
                 Node n = p.next;
                 p = (p != n) ? n : (h = head); // Use head if p offlist
@@ -599,6 +599,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
                 if (pred == null)
                     continue retry;           // lost race vs opposite mode
                 if (how != ASYNC)
+                    // 超时等待或者永久等待
                     return awaitMatch(s, pred, e, (how == TIMED), nanos);
             }
             return e; // not waiting
@@ -688,7 +689,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
             }
             if ((w.isInterrupted() || (timed && nanos <= 0)) &&
                     s.casItem(e, s)) {       // cancel
-                // 如果节点已经被中断或者已经超时则直接取消节点
+                // 如果节点已经被中断或者已经超时则直接取消节点(item等于node自身表示被取消)
                 unsplice(pred, s);
                 return e;
             }
@@ -704,7 +705,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
                     // 当最后一次自旋，尝试调整head的path
                     shortenHeadPath();        // reduce slack before blocking
                 else if (randomYields.nextInt(CHAINED_SPINS) == 0)
-                    // 释放cpu资源，变成就绪状态，等待被调用
+                    // 释放cpu资源，变成就绪状态，等待被调用，每次当前线程随机值等于0时，触发yield。
                     Thread.yield();           // occasionally yield
             }
             else if (s.waiter == null) {
@@ -722,6 +723,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
                 // 完全等待
                 LockSupport.park(this);
                 s.waiter = null;
+                // 万一是虚假唤醒，需要重新进行初始化循环
                 spins = -1;                   // spin if front upon wakeup
             }
         }
@@ -752,19 +754,29 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
      * or trailing node; failing on contention.
      */
     private void shortenHeadPath() {
+        // 什么时候需要触发缩短head的path，首要条件就是head已经被匹配，并且head的next不等于null
+        // head 节点要不是没有被match（那么它的next也不会被match），要不已经是matched（next可能被matched，也可能未被matched），
+        // 当已经是matched的情况下，它的next节点如果是matched。必然会casHead，替换head，并且将head移除队列（next指向自己）
         Node h, hn, p, q;
+        // 如果h还在队列中并且，h已经被match。next不为null
         if ((p = h = head) != null && h.isMatched() &&
             (q = hn = h.next) != null) {
             Node n;
+            // 如果q=h.next等于它自己的next，此时代表q和h可能都已经出队，或者h出队
             while ((n = q.next) != q) {
+                // 如果q的next等于null（也就是n，代表q是尾节点）并且q没有被matched（q后面有在排队的）
                 if (n == null || !q.isMatched()) {
+                   // 第一次进来如果满足说明q是head后面节点，并且q的next为null，此时直接break
+                    // 只有第二次进来，hn!=q 说明成立，并且h.next == hn说明没有人此时更改过h.next节点，可以调整h的next节点
                     if (hn != q && h.next == hn)
                         h.casNext(hn, q);
                     break;
                 }
+                // 往后进行遍历
                 p = q;
                 q = n;
             }
+            // q和h都出队，就跳出循环，忽略
         }
     }
 
@@ -776,6 +788,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
      * stale pointer that is now off the list.
      */
     final Node succ(Node p) {
+        // 如果p已经不在队里中，就返回head，如果在队列中就返回p的next节点
         Node next = p.next;
         return (p == next) ? head : next;
     }
@@ -785,10 +798,13 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
      * none.  Used by methods isEmpty, hasWaitingConsumer.
      */
     private Node firstOfMode(boolean isData) {
+        // isData表示是否是有数据的，true表示有数据，false表示没数据
         for (Node p = head; p != null; p = succ(p)) {
             if (!p.isMatched())
+                // 如果p的节点isData和入参一致，就返回p。否则返回null
                 return (p.isData == isData) ? p : null;
         }
+        // 没有找到也返回null
         return null;
     }
 
@@ -894,6 +910,8 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
      * @param s the node to be unspliced
      */
     private void unsplice(Node pred, Node s) {
+        // item设置节点自身
+        // waiter设置为null
         s.forgetContents(); // clear unneeded fields
         /*
          * At any given time, exactly one node on list cannot be
@@ -904,15 +922,19 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
          * node s or the node previously saved can always be
          * processed, so this always terminates.
          */
+        // 表示pred还在队列中,并且当前队列中只有一个元素
         if (pred != null && pred != s) {
+            // 确保pred.next等于s
             while (pred.next == s) {
                 Node oldpred = (cleanMe == null) ? null : reclean();
+                // s为cancel，s.next不为null。将pred.next从s设置为n
                 Node n = s.next;
                 if (n != null) {
                     if (n != s)
                         pred.casNext(s, n);
                     break;
                 }
+                // 如果s为最后节点，则将s的前置节点pred保存起来
                 if (oldpred == pred ||      // Already saved
                     ((oldpred == null || oldpred.next == s) &&
                      casCleanMe(oldpred, pred))) {
