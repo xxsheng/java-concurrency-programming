@@ -5,10 +5,13 @@ import org.junit.Before;
 import org.junit.Test;
 
 
+import java.sql.Time;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedTransferQueue;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class LinkedTransferQueueTest {
 
@@ -204,5 +207,116 @@ public class LinkedTransferQueueTest {
         System.out.println(queue.isEmpty());
     }
 
+
+    @Test
+    public void testThreadState() throws InterruptedException {
+
+        new Thread(() -> {
+            try {
+                queue.take();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }, "thread1").start();
+
+
+
+        Object o = new Object();
+
+        new Thread(() -> {
+            synchronized (o) {
+                while (true) {
+
+                }
+            }
+        }, "thread2").start();
+
+        new Thread(() -> {
+           synchronized (o) {
+               while (true) {
+
+               }
+           }
+        }, "thread3").start();
+
+
+
+        Object o1 = new Object();
+
+        new Thread(() -> {
+            synchronized (o1) {
+                try {
+                    o1.wait();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }, "thread4").start();
+
+        TimeUnit.SECONDS.sleep(10);
+
+        new Thread(() -> {
+            synchronized (o1) {
+                while (true) {
+
+                }
+            }
+        }, "thread5").start();
+
+
+        ReentrantLock lock = new ReentrantLock();
+        new Thread(() -> {
+            lock.lock();
+            try {
+                while (true) {
+
+                }
+            } finally {
+                lock.unlock();
+            }
+        }, "thread6").start();
+
+        new Thread(() -> {
+            lock.lock();
+            try {
+                while (true) {
+
+                }
+            } finally {
+                lock.unlock();
+            }
+        }, "thread7").start();
+
+        ReentrantLock lock1 = new ReentrantLock();
+        Condition condition = lock1.newCondition();
+        new Thread(() -> {
+            lock1.lock();
+            try {
+
+                condition.await();
+
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } finally {
+                lock1.unlock();
+            }
+        }, "thread8").start();
+
+        TimeUnit.SECONDS.sleep(10);
+        new Thread(() -> {
+            lock1.lock();
+            try {
+
+                while (true) {
+
+                }
+
+            } finally {
+                lock1.unlock();
+            }
+        }, "thread9").start();
+
+        System.out.println("-------");
+    }
 
 }

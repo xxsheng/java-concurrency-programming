@@ -1,0 +1,186 @@
+2023-08-07 19:22:25
+Full thread dump Java HotSpot(TM) 64-Bit Server VM (25.361-b09 mixed mode):
+
+"thread9" #22 prio=5 os_prio=0 tid=0x000001fd1109a800 nid=0x14b4 runnable [0x000000d66ddff000]
+   java.lang.Thread.State: RUNNABLE
+	at chapter6.LinkedTransferQueueTest.lambda$testThreadState$26(LinkedTransferQueueTest.java:310)
+	at chapter6.LinkedTransferQueueTest$$Lambda$9/103887628.run(Unknown Source)
+	at java.lang.Thread.run(Thread.java:750)
+
+"thread8" #21 prio=5 os_prio=0 tid=0x000001fd11098800 nid=0x200cc waiting on condition [0x000000d66dcff000]
+   java.lang.Thread.State: WAITING (parking)
+	at sun.misc.Unsafe.park(Native Method)
+	- parking to wait for  <0x000000076c8c4b80> (a java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject)
+	at java.util.concurrent.locks.LockSupport.park(LockSupport.java:175)
+	at java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.await(AbstractQueuedSynchronizer.java:2039)
+	at chapter6.LinkedTransferQueueTest.lambda$testThreadState$25(LinkedTransferQueueTest.java:296)
+	at chapter6.LinkedTransferQueueTest$$Lambda$8/445288316.run(Unknown Source)
+	at java.lang.Thread.run(Thread.java:750)
+
+"thread7" #20 prio=5 os_prio=0 tid=0x000001fd11097800 nid=0x178e8 waiting on condition [0x000000d66dbff000]
+   java.lang.Thread.State: WAITING (parking)
+	at sun.misc.Unsafe.park(Native Method)
+	- parking to wait for  <0x000000076c8bc0b0> (a java.util.concurrent.locks.ReentrantLock$NonfairSync)
+	at java.util.concurrent.locks.LockSupport.park(LockSupport.java:175)
+	at java.util.concurrent.locks.AbstractQueuedSynchronizer.parkAndCheckInterrupt(AbstractQueuedSynchronizer.java:836)
+	at java.util.concurrent.locks.AbstractQueuedSynchronizer.acquireQueued(AbstractQueuedSynchronizer.java:870)
+	at java.util.concurrent.locks.AbstractQueuedSynchronizer.acquire(AbstractQueuedSynchronizer.java:1199)
+	at java.util.concurrent.locks.ReentrantLock$NonfairSync.lock(ReentrantLock.java:209)
+	at java.util.concurrent.locks.ReentrantLock.lock(ReentrantLock.java:285)
+	at chapter6.LinkedTransferQueueTest.lambda$testThreadState$24(LinkedTransferQueueTest.java:280)
+	at chapter6.LinkedTransferQueueTest$$Lambda$7/2048425748.run(Unknown Source)
+	at java.lang.Thread.run(Thread.java:750)
+
+"thread6" #19 prio=5 os_prio=0 tid=0x000001fd1184f000 nid=0x219ec runnable [0x000000d66daff000]
+   java.lang.Thread.State: RUNNABLE
+	at chapter6.LinkedTransferQueueTest.lambda$testThreadState$23(LinkedTransferQueueTest.java:271)
+	at chapter6.LinkedTransferQueueTest$$Lambda$6/813656972.run(Unknown Source)
+	at java.lang.Thread.run(Thread.java:750)
+
+"thread5" #18 prio=5 os_prio=0 tid=0x000001fd1184e000 nid=0x21b38 runnable [0x000000d66d9ff000]
+   java.lang.Thread.State: RUNNABLE
+	at chapter6.LinkedTransferQueueTest.lambda$testThreadState$22(LinkedTransferQueueTest.java:260)
+	- locked <0x000000076c8b0dc8> (a java.lang.Object)
+	at chapter6.LinkedTransferQueueTest$$Lambda$5/561247961.run(Unknown Source)
+	at java.lang.Thread.run(Thread.java:750)
+
+"thread4" #17 prio=5 os_prio=0 tid=0x000001fd1185e000 nid=0x21c68 in Object.wait() [0x000000d66d8ff000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait(Native Method)
+	- waiting on <0x000000076c8b0dc8> (a java.lang.Object)
+	at java.lang.Object.wait(Object.java:502)
+	at chapter6.LinkedTransferQueueTest.lambda$testThreadState$21(LinkedTransferQueueTest.java:249)
+	- locked <0x000000076c8b0dc8> (a java.lang.Object)
+	at chapter6.LinkedTransferQueueTest$$Lambda$4/1208736537.run(Unknown Source)
+	at java.lang.Thread.run(Thread.java:750)
+
+"thread3" #16 prio=5 os_prio=0 tid=0x000001fd1185d000 nid=0x20f60 waiting for monitor entry [0x000000d66d7ff000]
+   java.lang.Thread.State: BLOCKED (on object monitor)
+	at chapter6.LinkedTransferQueueTest.lambda$testThreadState$20(LinkedTransferQueueTest.java:236)
+	- waiting to lock <0x000000076c8abae8> (a java.lang.Object)
+	at chapter6.LinkedTransferQueueTest$$Lambda$3/141289226.run(Unknown Source)
+	at java.lang.Thread.run(Thread.java:750)
+
+"thread2" #15 prio=5 os_prio=0 tid=0x000001fd1185b800 nid=0x1ff20 runnable [0x000000d66d6ff000]
+   java.lang.Thread.State: RUNNABLE
+	at chapter6.LinkedTransferQueueTest.lambda$testThreadState$19(LinkedTransferQueueTest.java:228)
+	- locked <0x000000076c8abae8> (a java.lang.Object)
+	at chapter6.LinkedTransferQueueTest$$Lambda$2/110771485.run(Unknown Source)
+	at java.lang.Thread.run(Thread.java:750)
+
+"thread1" #14 prio=5 os_prio=0 tid=0x000001fd1185a800 nid=0x21c80 waiting on condition [0x000000d66d5fe000]
+   java.lang.Thread.State: WAITING (parking)
+	at sun.misc.Unsafe.park(Native Method)
+	- parking to wait for  <0x000000076c65c238> (a java.util.concurrent.LinkedTransferQueue)
+	at java.util.concurrent.locks.LockSupport.park(LockSupport.java:175)
+	at java.util.concurrent.LinkedTransferQueue.awaitMatch(LinkedTransferQueue.java:737)
+	at java.util.concurrent.LinkedTransferQueue.xfer(LinkedTransferQueue.java:647)
+	at java.util.concurrent.LinkedTransferQueue.take(LinkedTransferQueue.java:1269)
+	at chapter6.LinkedTransferQueueTest.lambda$testThreadState$18(LinkedTransferQueueTest.java:216)
+	at chapter6.LinkedTransferQueueTest$$Lambda$1/798244209.run(Unknown Source)
+	at java.lang.Thread.run(Thread.java:750)
+
+"Service Thread" #13 daemon prio=9 os_prio=0 tid=0x000001fd11072000 nid=0x21aec runnable [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"C1 CompilerThread3" #12 daemon prio=9 os_prio=2 tid=0x000001fd10fd9000 nid=0x21ba8 waiting on condition [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"C2 CompilerThread2" #11 daemon prio=9 os_prio=2 tid=0x000001fd10fd8000 nid=0x1fd7c waiting on condition [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"C2 CompilerThread1" #10 daemon prio=9 os_prio=2 tid=0x000001fd10fd3800 nid=0x21378 waiting on condition [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"C2 CompilerThread0" #9 daemon prio=9 os_prio=2 tid=0x000001fd10fd3000 nid=0x1bd34 waiting on condition [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"JDWP Command Reader" #8 daemon prio=10 os_prio=0 tid=0x000001fd10f3a000 nid=0x1aa44 runnable [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"JDWP Event Helper Thread" #7 daemon prio=10 os_prio=0 tid=0x000001fd7fbae000 nid=0x184f8 runnable [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"JDWP Transport Listener: dt_socket" #6 daemon prio=10 os_prio=0 tid=0x000001fd7fbaa000 nid=0x20128 runnable [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Attach Listener" #5 daemon prio=5 os_prio=2 tid=0x000001fd7fb82800 nid=0x1ece0 waiting on condition [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Signal Dispatcher" #4 daemon prio=9 os_prio=2 tid=0x000001fd7fb82000 nid=0x21f24 runnable [0x0000000000000000]
+   java.lang.Thread.State: RUNNABLE
+
+"Finalizer" #3 daemon prio=8 os_prio=1 tid=0x000001fd7fb4e800 nid=0x2180c in Object.wait() [0x000000d66c9ff000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait(Native Method)
+	- waiting on <0x000000076bb88f08> (a java.lang.ref.ReferenceQueue$Lock)
+	at java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:150)
+	- locked <0x000000076bb88f08> (a java.lang.ref.ReferenceQueue$Lock)
+	at java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:171)
+	at java.lang.ref.Finalizer$FinalizerThread.run(Finalizer.java:188)
+
+"Reference Handler" #2 daemon prio=10 os_prio=2 tid=0x000001fd7fb46000 nid=0x1a1fc in Object.wait() [0x000000d66c8fe000]
+   java.lang.Thread.State: WAITING (on object monitor)
+	at java.lang.Object.wait(Native Method)
+	- waiting on <0x000000076bb86ba0> (a java.lang.ref.Reference$Lock)
+	at java.lang.Object.wait(Object.java:502)
+	at java.lang.ref.Reference.tryHandlePending(Reference.java:191)
+	- locked <0x000000076bb86ba0> (a java.lang.ref.Reference$Lock)
+	at java.lang.ref.Reference$ReferenceHandler.run(Reference.java:153)
+
+"main" #1 prio=5 os_prio=0 tid=0x000001fd73e4d800 nid=0x1cbf8 at breakpoint[0x000000d66bcfd000]
+   java.lang.Thread.State: RUNNABLE
+	at chapter6.LinkedTransferQueueTest.testThreadState(LinkedTransferQueueTest.java:319)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:498)
+	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+	at org.junit.internal.runners.statements.RunBefores.evaluate(RunBefores.java:26)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+	at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+	at com.intellij.junit4.JUnit4IdeaTestRunner.startRunnerWithArgs(JUnit4IdeaTestRunner.java:69)
+	at com.intellij.rt.junit.IdeaTestRunner$Repeater.startRunnerWithArgs(IdeaTestRunner.java:33)
+	at com.intellij.rt.junit.JUnitStarter.prepareStreamsAndStart(JUnitStarter.java:221)
+	at com.intellij.rt.junit.JUnitStarter.main(JUnitStarter.java:54)
+
+"VM Thread" os_prio=2 tid=0x000001fd7fb1e000 nid=0x1b960 runnable 
+
+"GC task thread#0 (ParallelGC)" os_prio=0 tid=0x000001fd73e63000 nid=0x210e4 runnable 
+
+"GC task thread#1 (ParallelGC)" os_prio=0 tid=0x000001fd73e64000 nid=0x202d8 runnable 
+
+"GC task thread#2 (ParallelGC)" os_prio=0 tid=0x000001fd73e65800 nid=0x1c660 runnable 
+
+"GC task thread#3 (ParallelGC)" os_prio=0 tid=0x000001fd73e67000 nid=0x1f67c runnable 
+
+"GC task thread#4 (ParallelGC)" os_prio=0 tid=0x000001fd73e69000 nid=0x21cb0 runnable 
+
+"GC task thread#5 (ParallelGC)" os_prio=0 tid=0x000001fd73e6a000 nid=0x1d7d8 runnable 
+
+"GC task thread#6 (ParallelGC)" os_prio=0 tid=0x000001fd73e6d000 nid=0x21ee8 runnable 
+
+"GC task thread#7 (ParallelGC)" os_prio=0 tid=0x000001fd73e6e000 nid=0x1b70c runnable 
+
+"GC task thread#8 (ParallelGC)" os_prio=0 tid=0x000001fd73e6f000 nid=0x20054 runnable 
+
+"GC task thread#9 (ParallelGC)" os_prio=0 tid=0x000001fd73e70000 nid=0x20898 runnable 
+
+"VM Periodic Task Thread" os_prio=2 tid=0x000001fd110bb000 nid=0x1f774 waiting on condition 
+
+JNI global references: 3454
+
