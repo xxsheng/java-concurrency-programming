@@ -558,6 +558,9 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
                         // 第二种：已经有一个线程在阻塞获取元素，那么e就是有元素的，因此这句话的意思就是将无值的p节点的item引用设置为e，表示无值的p节点已经被match
                         for (Node q = p; q != h;) {
                             // 什么情况下会有多个节点?
+                            // 以队列中都是放入的数据，等待线程来阻塞取的视角来看
+                            // head head.next都有数据，此时三个线程都来同时取，都进入到casItem节点，最终只有一个线程拿到head数据，此时剩下俩个线程来争抢剩下一个元素
+                            // 如果线程B争抢到了后，head.next不等于head。就会存在进入此循环。会将b线程获取到的元素设置为头节点。因为head节点元素被获取了，可以出队
                             Node n = q.next;  // update head by 2
                             if (n != null)    // unless singleton
                                 // q也就是p的next节点不为null，那么就将n赋予q
@@ -587,6 +590,7 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
                     }
                 } // matched
                 // 如果n等于p，表示该元素已经出队，
+                // 线程C此时拿到的p还是初始head，此时初始head已经被线程b移除队列（next指向自身）。
                 Node n = p.next;
                 p = (p != n) ? n : (h = head); // Use head if p offlist
             }
@@ -616,9 +620,12 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
      * predecessor
      */
     private Node tryAppend(Node s, boolean haveData) {
+        // t是末尾节点，p是t节点
         for (Node t = tail, p = t;;) {        // move p to last node and append
             Node n, u;                        // temps for reads of next & tail
+            // 如果p也就是末尾节点为null，就将p设置为head节点，并且判断是否为null
             if (p == null && (p = head) == null) {
+                // 如果head也为null，则将s设置为head节点，表示当前列表是空列表
                 // p 和head都为null，表示空节点，直接设置头节点
                 if (casHead(null, s))
                     // 设置成功则表示初始化队列成功
