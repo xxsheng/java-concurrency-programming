@@ -1,7 +1,12 @@
 package chapter6.fockjoin;
 
+import sun.misc.Unsafe;
+
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveTask;
 
 public class CountTask extends RecursiveTask<Integer> {
@@ -39,10 +44,39 @@ public class CountTask extends RecursiveTask<Integer> {
         return sum;
     }
 
-    public static void main(String[] args) throws ExecutionException, InterruptedException {
-        ForkJoinPool forkJoinPool = new ForkJoinPool();
-        CountTask task = new CountTask(1, 100);
-        forkJoinPool.submit(task);
-        System.out.println(task.get());
+    public static void main(String[] args) throws ExecutionException, InterruptedException, NoSuchFieldException, IllegalAccessException {
+//        ForkJoinPool forkJoinPool = new ForkJoinPool(0x7fff);
+//        CountTask task = new CountTask(1, 100);
+//        forkJoinPool.submit(task);
+//        System.out.println(task.get());
+//
+//        System.out.println(Integer.MAX_VALUE);
+//        System.out.println(Integer.numberOfLeadingZeros(4));
+        ForkJoinTask[] array = new ForkJoinTask[10];
+        array[0] = new ForkJoinTask() {
+            @Override
+            public Object getRawResult() {
+                return 0;
+            }
+
+            @Override
+            protected void setRawResult(Object value) {
+
+            }
+
+            @Override
+            protected boolean exec() {
+                return false;
+            }
+        };
+        Field field = Unsafe.class.getDeclaredField("theUnsafe");
+        field.setAccessible(true);
+        Unsafe unsafe = (Unsafe) field.get(null);
+
+//        System.out.println(unsafe.arrayBaseOffset(int[].class));
+        System.out.println(unsafe.arrayIndexScale(Long[].class));
+        System.out.println(unsafe.arrayIndexScale(ForkJoinTask[].class));
+        System.out.println(2<<2);
+        System.out.println(1<<2);
     }
 }
