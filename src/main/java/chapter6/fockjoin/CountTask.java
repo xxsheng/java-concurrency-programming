@@ -45,38 +45,26 @@ public class CountTask extends RecursiveTask<Integer> {
     }
 
     public static void main(String[] args) throws ExecutionException, InterruptedException, NoSuchFieldException, IllegalAccessException {
-//        ForkJoinPool forkJoinPool = new ForkJoinPool(0x7fff);
-//        CountTask task = new CountTask(1, 100);
-//        forkJoinPool.submit(task);
-//        System.out.println(task.get());
+        ForkJoinPool forkJoinPool = new ForkJoinPool(0x7fff);
+        CountTask task = new CountTask(1, 100);
+        forkJoinPool.submit(task);
+        System.out.println(task.get());
 //
 //        System.out.println(Integer.MAX_VALUE);
 //        System.out.println(Integer.numberOfLeadingZeros(4));
-        ForkJoinTask[] array = new ForkJoinTask[10];
-        array[0] = new ForkJoinTask() {
-            @Override
-            public Object getRawResult() {
-                return 0;
-            }
 
-            @Override
-            protected void setRawResult(Object value) {
-
-            }
-
-            @Override
-            protected boolean exec() {
-                return false;
-            }
-        };
-        Field field = Unsafe.class.getDeclaredField("theUnsafe");
-        field.setAccessible(true);
-        Unsafe unsafe = (Unsafe) field.get(null);
-
-//        System.out.println(unsafe.arrayBaseOffset(int[].class));
-        System.out.println(unsafe.arrayIndexScale(Long[].class));
-        System.out.println(unsafe.arrayIndexScale(ForkJoinTask[].class));
-        System.out.println(2<<2);
-        System.out.println(1<<2);
+//        Field field = Unsafe.class.getDeclaredField("theUnsafe");
+//        field.setAccessible(true);
+//        Unsafe unsafe = (Unsafe) field.get(null);
+//
+////        System.out.println(unsafe.arrayBaseOffset(int[].class));
+//        int longScale = unsafe.arrayIndexScale(Long[].class);
+//        System.out.println(longScale);
+//        System.out.println(Integer.numberOfLeadingZeros(longScale));
+//        System.out.println(Integer.toBinaryString(longScale));
+//        int objectScale = unsafe.arrayIndexScale(ForkJoinTask[].class);
+//        System.out.println(objectScale);
+//        System.out.println(2<<2);
+//        System.out.println(1<<2);
     }
 }

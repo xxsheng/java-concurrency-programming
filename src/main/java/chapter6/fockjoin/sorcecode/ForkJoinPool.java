@@ -1380,16 +1380,16 @@ public class ForkJoinPool extends AbstractExecutorService {
     private static final long ADD_WORKER = 0x0001L << (TC_SHIFT + 15); // sign
 
     // runState bits: SHUTDOWN must be negative, others arbitrary powers of two
-    private static final int  RSLOCK     = 1;
-    private static final int  RSIGNAL    = 1 << 1;
-    private static final int  STARTED    = 1 << 2;
-    private static final int  STOP       = 1 << 29;
-    private static final int  TERMINATED = 1 << 30;
-    private static final int  SHUTDOWN   = 1 << 31;
+    private static final int  RSLOCK     = 1; //表示线程池的锁状态。当线程池在某些操作（比如启动、关闭等）期间需要加锁时，会设置该标志
+    private static final int  RSIGNAL    = 1 << 1; //表示线程池是否有等待信号。用于协调线程池的状态转换
+    private static final int  STARTED    = 1 << 2; //表示线程池是否已经启动。启动后会设置该标志
+    private static final int  STOP       = 1 << 29; //表示线程池是否停止。在线程池停止时会设置该标志
+    private static final int  TERMINATED = 1 << 30; //表示线程池是否已经终止。在线程池终止时会设置该标志
+    private static final int  SHUTDOWN   = 1 << 31; //表示线程池是否已经关闭。在线程池关闭时会设置该标志
 
     // Instance fields
     volatile long ctl;                   // main pool control
-    // 线程池状态
+    // 线程池状态，初始等于0
     volatile int runState;               // lockable status
     final int config;                    // parallelism, mode
     int indexSeed;                       // to generate worker index
@@ -1406,6 +1406,9 @@ public class ForkJoinPool extends AbstractExecutorService {
      */
     private int lockRunState() {
         int rs;
+        // 当前线程需要锁定线程池状态，最后最低位为1来判断是否有其他线程已经锁定状态了
+        // 如果已经被其他线程锁定，则进行await来等待释放锁
+        // 如果没有被其他线程锁定，则将当前线程池状态标志位附加上去
         return ((((rs = runState) & RSLOCK) != 0 ||
                  !U.compareAndSwapInt(this, RUNSTATE, rs, rs |= RSLOCK)) ?
                 awaitRunStateLock() : rs);
@@ -1420,17 +1423,20 @@ public class ForkJoinPool extends AbstractExecutorService {
         boolean wasInterrupted = false;
         for (int spins = SPINS, r = 0, rs, ns;;) {
             if (((rs = runState) & RSLOCK) == 0) {
+                // 如果当前线程池已经被释放锁，则尝试加锁
                 if (U.compareAndSwapInt(this, RUNSTATE, rs, ns = rs | RSLOCK)) {
                     if (wasInterrupted) {
+                        // 响应中断
                         try {
                             Thread.currentThread().interrupt();
                         } catch (SecurityException ignore) {
                         }
                     }
+                    // 返回线程池状态
                     return ns;
                 }
             }
-            else if (r == 0)
+            else if (r == 0) // 表示当前线程池已经被获取锁，并且是第一次进行循环，初始化SECONDARY的数值
                 r = ThreadLocalRandom.nextSecondarySeed();
             else if (spins > 0) {
                 r ^= r << 6; r ^= r >>> 21; r ^= r << 7; // xorshift
@@ -1438,8 +1444,9 @@ public class ForkJoinPool extends AbstractExecutorService {
                     --spins;
             }
             else if ((rs & STARTED) == 0 || (lock = stealCounter) == null)
+                // 还未完成初始化操作，释放cpu等待完成初始化操作
                 Thread.yield();   // initialization race
-            else if (U.compareAndSwapInt(this, RUNSTATE, rs, rs | RSIGNAL)) {
+            else if (U.compareAndSwapInt(this, RUNSTATE, rs, rs | RSIGNAL)) {// 线程池状态有变更，后续理解？
                 synchronized (lock) {
                     if ((runState & RSIGNAL) != 0) {
                         try {
@@ -1464,6 +1471,7 @@ public class ForkJoinPool extends AbstractExecutorService {
      * @param newRunState the next value (must have lock bit clear).
      */
     private void unlockRunState(int oldRunState, int newRunState) {
+        // 如果线程池状态在unlock期间有变更，那么则无法将runstate变成shutdown状态（假设此处是），则会唤醒所有等待的线程，由其他线程继续尝试
         if (!U.compareAndSwapInt(this, RUNSTATE, oldRunState, newRunState)) {
             Object lock = stealCounter;
             runState = newRunState;              // clears RSIGNAL bit
@@ -2220,16 +2228,21 @@ public class ForkJoinPool extends AbstractExecutorService {
      */
     private boolean tryTerminate(boolean now, boolean enable) {
         int rs;
+        // 如果是公有内部线程池，则禁止关闭
         if (this == common)                       // cannot shut down
             return false;
+        // 如果当前线程池状态大于0，表示活跃状态的话
         if ((rs = runState) >= 0) {
+            // 仅在enable为true的情况下才会尝试关闭线程池,如果enable为false则直接返回
             if (!enable)
                 return false;
             rs = lockRunState();                  // enter SHUTDOWN phase
+            // 释放锁，
             unlockRunState(rs, (rs & ~RSLOCK) | SHUTDOWN);
         }
 
-        if ((rs & STOP) == 0) {
+        if ((rs & STOP) == 0) { // 表示当前线程还不是stop状态，需要变成stop状态
+            // 如果now为false，则进行方法块，false表示不立刻停止线程池
             if (!now) {                           // check quiescence
                 for (long oldSum = 0L;;) {        // repeat until stable
                     WorkQueue[] ws; WorkQueue w; int m, b; long c;
@@ -2254,7 +2267,8 @@ public class ForkJoinPool extends AbstractExecutorService {
                         break;
                 }
             }
-            if ((runState & STOP) == 0) {
+            // 立刻停止线程池（不需要等待线程池中任务执行完）（通过加锁和解锁来处理）
+            if ((runState & STOP) == 0) { // 先判断runstate是否是初始状态
                 rs = lockRunState();              // enter STOP phase
                 unlockRunState(rs, (rs & ~RSLOCK) | STOP);
             }
@@ -2320,13 +2334,17 @@ public class ForkJoinPool extends AbstractExecutorService {
      */
     private void externalSubmit(ForkJoinTask<?> task) {
         int r;                                    // initialize caller's probe
+        //  probe 表示每个线程唯一的一个索引值，
+        //  seed 表示随机数的种子
         if ((r = ThreadLocalRandom.getProbe()) == 0) {
             ThreadLocalRandom.localInit();
+            // 初始化线程索引值
             r = ThreadLocalRandom.getProbe();
         }
         for (;;) {
             WorkQueue[] ws; WorkQueue q; int rs, m, k;
             boolean move = false;
+            // 如果runState小于0，表示线程池状态为关闭状态，帮助进行销毁
             if ((rs = runState) < 0) {
                 tryTerminate(false, false);     // help terminate
                 throw new RejectedExecutionException();
@@ -2416,7 +2434,7 @@ public class ForkJoinPool extends AbstractExecutorService {
                 (am = a.length - 1) > (n = (s = q.top) - q.base)) {
                 //  (am = a.length - 1) > (n = (s = q.top) - q.base)表示数组还有空间存放多余的元素
                 // ASHIFT表示引用数组每个引用占用的内存空间，am&s用来保证数组下标不越界
-                // ASHIFT这里为2一般，表示引用字节偏移量，每个引用占用4个字节，数组下标*偏移量等于新任务的偏移量
+                // ASHIFT这里为2一般，表示引用字节偏移量，每个引用占用4个字节，top索引数组下标*偏移量等于新任务的偏移量
                 // (am & s) << ASHIFT) 表示偏移s也就是循环数组起点地址的距离
                 // ABASE表示数组在内存中的偏移量，加上改值表示下一个元素可以写入的内存地址
 
