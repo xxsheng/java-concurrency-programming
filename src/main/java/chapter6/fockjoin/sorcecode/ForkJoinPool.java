@@ -758,6 +758,7 @@ public class ForkJoinPool extends AbstractExecutorService {
     // Masks and units for WorkQueue.scanState and ctl sp subfield
     static final int SCANNING     = 1;             // false when running tasks
     static final int INACTIVE     = 1 << 31;       // must be negative
+    // wait count +1
     static final int SS_SEQ       = 1 << 16;       // version count
 
     // Mode bits for ForkJoinPool.config and WorkQueue.config
@@ -805,7 +806,9 @@ public class ForkJoinPool extends AbstractExecutorService {
         int hint;                  // randomization and stealer index hint
         int config;                // pool index and mode
         volatile int qlock;        // 1: locked, < 0: terminate; else 0
+        // 队尾
         volatile int base;         // index of next slot for poll
+        // 队头
         int top;                   // index of next slot for push
         ForkJoinTask<?>[] array;   // the elements (initially unallocated)
         final ForkJoinPool pool;   // the containing pool (may be null)
@@ -1365,7 +1368,9 @@ public class ForkJoinPool extends AbstractExecutorService {
      */
 
     // Lower and upper word masks
+    // 低32位全是1
     private static final long SP_MASK    = 0xffffffffL;
+    // 高32位全是1，低32位全是0
     private static final long UC_MASK    = ~SP_MASK;
 
     // Active counts
@@ -1388,9 +1393,17 @@ public class ForkJoinPool extends AbstractExecutorService {
     private static final int  SHUTDOWN   = 1 << 31; //表示线程池是否已经关闭。在线程池关闭时会设置该标志
 
     // Instance fields
+    // 将线程数量转化成long类型，然后初始化ctl（高16位存储活跃线程，中16位存储线程总数。后32位待定）
+    /**
+     * 高16位(63~48)表示活跃的线程，值为活跃线程数减去parallelism（补码表示），初始值是0-parallelism,工作线程激活则加1，去激活则减1。当累积加了parallelism时第63bit位翻转为0，则不允许再激活工作线程。
+     * 第47~32位表示当前所有工作线程(包括未激活的)，值为所有工作线程数-parallelism（补码表示），创建线程则加1，终止线程则减1。当累积加了parallelism时第47位翻转位0，则不允许再创建线程；
+     * 第31～16位表示非激活线程链中top线程的版本计数和线程状态，与第15～0位合起来看；
+     * 第15～0位表示非激活线程链中top线程的本地WorkQueue在ForkJoinPool.workQueues数组中下标索引，第31～0位合起来的值实际是非激活线程链中top线程的本地WorkQueue.scanState
+     */
     volatile long ctl;                   // main pool control
     // 线程池状态，初始等于0
     volatile int runState;               // lockable status
+    // 低16位存储线程数量，高16位存储工作模式
     final int config;                    // parallelism, mode
     int indexSeed;                       // to generate worker index
     volatile WorkQueue[] workQueues;     // main registry
@@ -1677,12 +1690,18 @@ public class ForkJoinPool extends AbstractExecutorService {
      * @return true if successful
      */
     private boolean tryRelease(long c, WorkQueue v, long inc) {
+        // 想要唤醒阻塞的线程，进行处理任务
         int sp = (int)c, vs = (sp + SS_SEQ) & ~INACTIVE; Thread p;
+        // vs为当前阻塞链顶的节点的一个综合状态加1，整体来看就是wait_count加1
         if (v != null && v.scanState == sp) {          // v is at top of stack
+            // v不为null，并且v是阻塞链的第一个节点
             long nc = (UC_MASK & (c + inc)) | (SP_MASK & v.stackPred);
+            // 将v的前一个链推入到阻塞链的节点顶点
             if (U.compareAndSwapLong(this, CTL, c, nc)) {
                 v.scanState = vs;
+                // 更新当前v的scanState为vs，count增加一个
                 if ((p = v.parker) != null)
+                    // 唤醒v的阻塞线程，需要再次分析
                     U.unpark(p);
                 return true;
             }
@@ -2242,33 +2261,40 @@ public class ForkJoinPool extends AbstractExecutorService {
         }
 
         if ((rs & STOP) == 0) { // 表示当前线程还不是stop状态，需要变成stop状态
-            // 如果now为false，则进行方法块，false表示不立刻停止线程池
+            // 如果now为false，则进行方法块，now为false表示不需要立刻停止线程池
             if (!now) {                           // check quiescence
                 for (long oldSum = 0L;;) {        // repeat until stable
+                    // ws是work队列，w是元素，m是队列大小，b是队尾，c是ctl
                     WorkQueue[] ws; WorkQueue w; int m, b; long c;
                     long checkSum = ctl;
+                    // 获得活跃线程数 和 线程数初始化数量 判断是否大于0，大于0则直接返回不进行终止（说明有活跃线程）
                     if ((int)(checkSum >> AC_SHIFT) + (config & SMASK) > 0)
                         return false;             // still active workers
+                    // 这种情况表示队列应该是不正常的，正常队列不为null并且长度也不应该小于等于0，说明队列还没初始化就进行关闭。
                     if ((ws = workQueues) == null || (m = ws.length - 1) <= 0)
                         break;                    // check queues
                     for (int i = 0; i <= m; ++i) {
                         if ((w = ws[i]) != null) {
                             if ((b = w.base) != w.top || w.scanState >= 0 ||
                                 w.currentSteal != null) {
+                                // 如果当前工作队列还存在任务，或者需要执行别的队列的任务，则尝试唤醒正在阻塞的线程（只唤醒一个），并且直接return
+                                // m&(int)c，m最大应该是2个字节，而（int）c表示ctl的低32位，其中低16位是阻塞线程的索引，而m的高32位是0，因此此处是基于m找出c
                                 tryRelease(c = ctl, ws[m & (int)c], AC_UNIT);
                                 return false;     // arrange for recheck
                             }
                             checkSum += b;
                             if ((i & 1) == 0)
+                                // 尝试将外部的工作队列进行关闭
                                 w.qlock = -1;     // try to disable external
                         }
                     }
+                    // 此处如何理解。只要执行过for循环就终结外部循环
                     if (oldSum == (oldSum = checkSum))
                         break;
                 }
             }
-            // 立刻停止线程池（不需要等待线程池中任务执行完）（通过加锁和解锁来处理）
-            if ((runState & STOP) == 0) { // 先判断runstate是否是初始状态
+            // 执行完上面代码还没有跳出方法的，则需要立刻停止线程池（不需要等待线程池中任务执行完）（通过加锁和解锁来处理）
+            if ((runState & STOP) == 0) { // 先判断runstate是否是初始状态或者是stop状态
                 rs = lockRunState();              // enter STOP phase
                 unlockRunState(rs, (rs & ~RSLOCK) | STOP);
             }
