@@ -33,4 +33,40 @@ public class ForkJoinPoolTest {
         System.out.println(a == (a = b));
         System.out.println(a);
     }
+
+    @Test
+    public void test4() {
+        System.out.println(Integer.toBinaryString(Integer.MIN_VALUE));
+        System.out.println(Integer.toBinaryString(Integer.MIN_VALUE >>> 1));
+    }
+
+    @Test
+    public void test5() {
+        System.out.println(Integer.toBinaryString(49));
+        System.out.println(Integer.toBinaryString(3));
+        System.out.println(Integer.toBinaryString(Integer.MAX_VALUE));
+        System.out.println(Long.toBinaryString(Long.MIN_VALUE >>> 32));
+
+        System.out.println(Integer.toBinaryString(1 << 31));
+        System.out.println(1 << 13);
+    }
+
+    @Test
+    public void test6() {
+        int n = 0x7fff;
+        System.out.println(Integer.toBinaryString(n));
+        n |= n >>> 1;
+        System.out.println(Integer.toBinaryString(n));
+        n |= n >>> 2;
+        System.out.println(Integer.toBinaryString(n));
+        n |= n >>> 4;
+        System.out.println(Integer.toBinaryString(n));
+        n |= n >>> 8;
+        System.out.println(Integer.toBinaryString(n));
+        n |= n >>> 16;
+        System.out.println(Integer.toBinaryString(n));
+        n = (n + 1);
+        System.out.println(Integer.toBinaryString(n));
+        System.out.println(n);
+    }
 }

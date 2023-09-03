@@ -53,9 +53,10 @@ public class CountTask extends RecursiveTask<Integer> {
 //        System.out.println(Integer.MAX_VALUE);
 //        System.out.println(Integer.numberOfLeadingZeros(4));
 
-//        Field field = Unsafe.class.getDeclaredField("theUnsafe");
-//        field.setAccessible(true);
-//        Unsafe unsafe = (Unsafe) field.get(null);
+        Field field = Unsafe.class.getDeclaredField("theUnsafe");
+        field.setAccessible(true);
+        Unsafe unsafe = (Unsafe) field.get(null);
+        System.out.println(unsafe.arrayBaseOffset(Integer[].class));
 //
 ////        System.out.println(unsafe.arrayBaseOffset(int[].class));
 //        int longScale = unsafe.arrayIndexScale(Long[].class);
