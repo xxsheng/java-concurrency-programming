@@ -2,6 +2,8 @@ package chapter6.fockjoin.test;
 
 import org.junit.Test;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.concurrent.ForkJoinPool;
 
 public class ForkJoinPoolTest {
@@ -53,7 +55,7 @@ public class ForkJoinPoolTest {
 
     @Test
     public void test6() {
-        int n = 0x7fff;
+        int n = 0x8000;
         System.out.println(Integer.toBinaryString(n));
         n |= n >>> 1;
         System.out.println(Integer.toBinaryString(n));
@@ -68,5 +70,22 @@ public class ForkJoinPoolTest {
         n = (n + 1);
         System.out.println(Integer.toBinaryString(n));
         System.out.println(n);
+    }
+
+    @Test
+    public void test7() {
+        String test1 = "\u07ff";
+        System.out.println(Integer.toHexString((int)test1.charAt(0)));
+        byte[] bytes = test1.getBytes(StandardCharsets.UTF_8);
+        System.out.println(Arrays.toString(bytes));
+
+    }
+
+    @Test
+    public void test8() {
+//        String word = "\uD835\uDD46";
+//        System.out.println(word);
+        System.out.println(1L<<47);
+
     }
 }
