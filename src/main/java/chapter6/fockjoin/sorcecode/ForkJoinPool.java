@@ -805,6 +805,8 @@ public class ForkJoinPool extends AbstractExecutorService {
 
         // Instance fields
         /**
+         * 在work线程中scanState为i；也就是索引下标
+         *
          * 第31位表示线程状态（1非激活），第30～16位表示版本计数；
          * 第0位表示worker线程是否在运行任务(1-scanning，0-busy)，这里有个小技巧，
          * 在创建worker线程的WorkQueue时scanState的第15～0位初始化为ForkJoinPool.workQueues的下标（worker线程的WorkQueue的下标是奇数），
@@ -1432,7 +1434,7 @@ public class ForkJoinPool extends AbstractExecutorService {
     // 低16位存储线程数量，高16位存储工作模式
     final int config;                    // parallelism, mode
     int indexSeed;                       // to generate worker index
-    // 扩容是乘以2倍
+    // 扩容是乘以2倍（register work的时候如果冲突则进行扩容），workQueues的长度一般是线程大小的2倍
     volatile WorkQueue[] workQueues;     // main registry
     final ForkJoinWorkerThreadFactory factory;
     // 异常捕捉器
@@ -1614,7 +1616,7 @@ public class ForkJoinPool extends AbstractExecutorService {
                 if (ws[i] != null) {                  // collision
                     int probes = 0;                   // step by approx half n
                     int step = (n <= 4) ? 2 : ((n >>> 1) & EVENMASK) + 2;
-                    while (ws[i = (i + step) & m] != null) { // 一直找到不冲突为止
+                    while (ws[i = (i + step) & m] != null) { // 一直找到不冲突为止（i所在的下表没有已经存在work线程）
                         // 先将i每次相加step，如果i大于n都还没找到不冲突的，则扩容 反复操作
                         if (++probes >= n) {
                             // 扩容俩倍
@@ -1806,6 +1808,7 @@ public class ForkJoinPool extends AbstractExecutorService {
      * @return a task, or null if none found
      */
     private ForkJoinTask<?> scan(WorkQueue w, int r) {
+        // ws是工作队列，m是队列最大索引下标，w是工作所在的队列
         WorkQueue[] ws; int m;
         if ((ws = workQueues) != null && (m = ws.length - 1) > 0 && w != null) {
             int ss = w.scanState;                     // initially non-negative
