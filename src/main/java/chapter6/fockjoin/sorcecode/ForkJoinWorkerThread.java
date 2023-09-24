@@ -148,6 +148,7 @@ public class ForkJoinWorkerThread extends Thread {
      * processing tasks.
      */
     protected void onStart() {
+        // 线程启动之前执行相关操作
     }
 
     /**
@@ -159,7 +160,7 @@ public class ForkJoinWorkerThread extends Thread {
      * to an unrecoverable error, or {@code null} if completed normally
      */
     protected void onTermination(Throwable exception) {
-        // 线程异常抽象方法
+        // 线程结束异常抽象方法
     }
 
     /**
