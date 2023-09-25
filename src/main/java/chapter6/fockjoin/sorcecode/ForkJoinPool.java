@@ -972,21 +972,32 @@ public class ForkJoinPool extends AbstractExecutorService {
          * Takes next task, if one exists, in FIFO order.
          */
         final ForkJoinTask<?> poll() {
+            // a是task任务数组，b是base索引，t是即将poll的任务
             ForkJoinTask<?>[] a; int b; ForkJoinTask<?> t;
+            // base - top 小于0表示还存在任务，当然也要保证array不为null
             while ((b = base) - top < 0 && (a = array) != null) {
+                // 获取base位置的元素内存地址
                 int j = (((a.length - 1) & b) << ASHIFT) + ABASE;
+                // 内存刷新去拿
                 t = (ForkJoinTask<?>)U.getObjectVolatile(a, j);
-                if (base == b) {
-                    if (t != null) {
+                if (base == b) { // 如果base等于b表示当前状态没有更改
+                    if (t != null) { // 不为null才设置为null
+                        // 考虑一种情况，为什么要先拿，再去判断base，如果t不为null，那么base一定等于b，但这里判断t不等于null的意义是什么
+                        // 另外一个线程，先置为null，在更新base，因此这里t可能是null，但base还没被更改，所以这么判断。
                         if (U.compareAndSwapObject(a, j, t, null)) {
+                            // t不等于null并且走到这里，表示是正常逻辑，取得task
                             base = b + 1;
+                            // 立即刷新
                             return t;
                         }
+                        // t不等于null， base == b ，但是cas失败，表示被人捷足先登了，并发很高
                     }
-                    else if (b + 1 == top) // now empty
+                    else if (b + 1 == top) // now empty这个好理解
+                        // base == b ,t为null，刚高并发，t刚被其他线程改为null，但是base还没来来得及更改
                         break;
                 }
             }
+            // 遍历结束没找到task直接返回null
             return null;
         }
 
@@ -1048,6 +1059,7 @@ public class ForkJoinPool extends AbstractExecutorService {
          */
         final void pollAndExecAll() {
             for (ForkJoinTask<?> t; (t = poll()) != null;)
+                // task为null跳出循环
                 t.doExec();
         }
 
@@ -1079,7 +1091,7 @@ public class ForkJoinPool extends AbstractExecutorService {
                     }
                 }
                 else
-                    // 执行先进先出（重点方法）
+                    // 执行先进先出,从base开始遍历（重点方法）
                     pollAndExecAll();
             }
         }
