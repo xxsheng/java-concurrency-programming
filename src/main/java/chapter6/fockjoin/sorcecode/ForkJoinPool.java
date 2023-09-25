@@ -827,9 +827,9 @@ public class ForkJoinPool extends AbstractExecutorService {
         volatile int qlock;        // 1: locked, < 0: terminate; else 0
         // 队尾，初始为0
         volatile int base;         // index of next slot for poll
-        // 队头， 初始为0
+        // 队头， 初始为0,下一个要被放入元素的位置，也就是说top所在的是没有元素的
         int top;                   // index of next slot for push
-        // 任务队列，初始为null，没有可见性。需要手动保存
+        // 任务队列，初始为null，没有可见性。需要手动保存，数组长度都是2的幂次方，初始为8192
         ForkJoinTask<?>[] array;   // the elements (initially unallocated)
         final ForkJoinPool pool;   // the containing pool (may be null)
         final ForkJoinWorkerThread owner; // owning thread or null if shared
@@ -907,8 +907,8 @@ public class ForkJoinPool extends AbstractExecutorService {
             int size = oldA != null ? oldA.length << 1 : INITIAL_QUEUE_CAPACITY;
             if (size > MAXIMUM_QUEUE_CAPACITY)
                 throw new RejectedExecutionException("Queue capacity exceeded");
-            int oldMask, t, b;
             // oldMask为旧数组长度的末尾下标（一般是2的幂次方），b为当前base，尾部索引值
+            int oldMask, t, b;
             // 初始化新的任务数组
             ForkJoinTask<?>[] a = array = new ForkJoinTask<?>[size];
             if (oldA != null && (oldMask = oldA.length - 1) >= 0 &&
@@ -1060,10 +1060,11 @@ public class ForkJoinPool extends AbstractExecutorService {
             // base是队尾，m是任务数组长度-1，s等于top前一个元素
             int b = base, m, s;
             ForkJoinTask<?>[] a = array;
+            // top不存放元素，从top遍历第一个元素是top-1
             if (b - (s = top - 1) <= 0 && a != null &&
                 (m = a.length - 1) >= 0) {// 表示数组内容不为空
                 if ((config & FIFO_QUEUE) == 0) {
-                    // 默认是先进后出，依旧是从top开始遍历（关注top代表意思，是否循环数组）
+                    // 默认是先进后出，依旧是从top开始遍历（循环数组）
                     for (ForkJoinTask<?> t;;) {
                         // 获取top元素，并置为null
                         if ((t = (ForkJoinTask<?>)U.getAndSetObject

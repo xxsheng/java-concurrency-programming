@@ -83,13 +83,15 @@ public class CountTask extends RecursiveTask<Integer> {
 //        long abcFieldOffset = unsafe.objectFieldOffset(TestObject.class.getDeclaredField("abc"));
 //        unsafe.compareAndSwapObject(testObject,abcFieldOffset,o1, o2);
 
-        for (int i = 0; i < 100; i++) {
-            int n = (i > 1) ? i - 1 : 1;
-            n |= n >>> 1; n |= n >>> 2;  n |= n >>> 4;
-            n |= n >>> 8; n |= n >>> 16; n = (n + 1) << 1;
+//        for (int i = 0; i < 100; i++) {
+//            int n = (i > 1) ? i - 1 : 1;
+//            n |= n >>> 1; n |= n >>> 2;  n |= n >>> 4;
+//            n |= n >>> 8; n |= n >>> 16; n = (n + 1) << 1;
+//
+//            System.out.println("n:" + n + "i:" + i);
+//        }
 
-            System.out.println("n:" + n + "i:" + i);
-        }
+        int[] test = new int[10];
 
     }
 
