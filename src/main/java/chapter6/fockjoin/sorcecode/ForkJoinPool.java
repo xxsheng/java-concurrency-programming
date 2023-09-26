@@ -1556,19 +1556,21 @@ public class ForkJoinPool extends AbstractExecutorService {
      *
      * @return true if successful
      */
-    // 创建workerThread并且放到队列中去
+    // 创建workerThread并且放到队列中去（register）
     private boolean createWorker() {
         ForkJoinWorkerThreadFactory fac = factory;
         Throwable ex = null;
         ForkJoinWorkerThread wt = null;
         try {
             if (fac != null && (wt = fac.newThread(this)) != null) {
+                // 启动线程
                 wt.start();
                 return true;
             }
         } catch (Throwable rex) {
             ex = rex;
         }
+        // 失败也要进行取消注册
         deregisterWorker(wt, ex);
         return false;
     }
@@ -1804,13 +1806,17 @@ public class ForkJoinPool extends AbstractExecutorService {
     /**
      * Top-level runloop for workers, called by ForkJoinWorkerThread.run.
      */
+    // 工作线程主要执行方法，先扫描任意一个task，然后执行
     final void runWorker(WorkQueue w) {
         w.growArray();                   // allocate queue
         int seed = w.hint;               // initially holds randomization hint
         int r = (seed == 0) ? 1 : seed;  // avoid 0 for xorShift
         for (ForkJoinTask<?> t;;) {
+            // 可能扫描自己的，也可能扫描到其他的
             if ((t = scan(w, r)) != null)
+                // 执行扫描的，并且会执行自身的
                 w.runTask(t);
+            // 如果没有扫描到则要进行await
             else if (!awaitWork(w, r))
                 break;
             r ^= r << 13; r ^= r >>> 17; r ^= r << 5; // xorshift
