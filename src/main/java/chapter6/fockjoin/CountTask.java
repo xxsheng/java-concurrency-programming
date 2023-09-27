@@ -41,6 +41,22 @@ public class CountTask extends RecursiveTask<Integer> {
         return sum;
     }
     static volatile int a = 9;
+    // Active counts
+    private static final int  AC_SHIFT   = 48;
+    private static final long AC_UNIT    = 0x0001L << AC_SHIFT;
+    private static final long AC_MASK    = 0xffffL << AC_SHIFT;
+
+    // Total counts
+    private static final int  TC_SHIFT   = 32;
+    private static final long TC_UNIT    = 0x0001L << TC_SHIFT;
+    private static final long TC_MASK    = 0xffffL << TC_SHIFT;
+    private static final long ADD_WORKER = 0x0001L << (TC_SHIFT + 15); // sign
+
+    // Lower and upper word masks
+    // 低32位全是1
+    private static final long SP_MASK    = 0xffffffffL;
+    // 高32位全是1，低32位全是0
+    private static final long UC_MASK    = ~SP_MASK;
     public static void main(String[] args) throws ExecutionException, InterruptedException, NoSuchFieldException, IllegalAccessException {
         ForkJoinPool forkJoinPool = new ForkJoinPool(0x7fff);
         CountTask task = new CountTask(1, 100);
@@ -83,14 +99,29 @@ public class CountTask extends RecursiveTask<Integer> {
 //        long abcFieldOffset = unsafe.objectFieldOffset(TestObject.class.getDeclaredField("abc"));
 //        unsafe.compareAndSwapObject(testObject,abcFieldOffset,o1, o2);
 
-        for (int i = 0; i < 100; i++) {
-            int n = (i > 1) ? i - 1 : 1;
-            n |= n >>> 1; n |= n >>> 2;  n |= n >>> 4;
-            n |= n >>> 8; n |= n >>> 16; n = (n + 1) << 1;
+//        for (int i = 0; i < 100; i++) {
+//            int n = (i > 1) ? i - 1 : 1;
+//            n |= n >>> 1; n |= n >>> 2;  n |= n >>> 4;
+//            n |= n >>> 8; n |= n >>> 16; n = (n + 1) << 1;
+//
+//            System.out.println("n:" + n + "i:" + i);
+//        }
 
-            System.out.println("n:" + n + "i:" + i);
-        }
+        int count = -32767;
+        System.out.println(Integer.toBinaryString(32767));
+        System.out.println(Integer.toBinaryString(-32767));
+        System.out.println(Long.toBinaryString(-4294967296l));
+        System.out.println((short)-32767);
 
+        long c = ((count << AC_SHIFT) & AC_MASK) | ((count << TC_SHIFT) & TC_MASK);
+        System.out.println(c);
+
+        long c1 =  (c + AC_UNIT);
+        System.out.println(c1);
+        System.out.println(Long.toBinaryString(c1));
+
+        int t = (short)(c >>> TC_SHIFT);
+        System.out.println(t);
     }
 
     static class TestObject {

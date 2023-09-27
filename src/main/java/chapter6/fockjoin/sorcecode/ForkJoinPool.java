@@ -1388,6 +1388,9 @@ public class ForkJoinPool extends AbstractExecutorService {
      * If/when MWAIT-like intrinsics becomes available, they
      * may allow quieter spinning.
      */
+    /**
+     * 自旋次数
+     */
     private static final int SPINS  = 0;
 
     /**
@@ -1808,7 +1811,7 @@ public class ForkJoinPool extends AbstractExecutorService {
      */
     // 工作线程主要执行方法，先扫描任意一个task，然后执行
     final void runWorker(WorkQueue w) {
-        w.growArray();                   // allocate queue
+        w.growArray();                   // allocate queue 分配队列容量
         int seed = w.hint;               // initially holds randomization hint
         int r = (seed == 0) ? 1 : seed;  // avoid 0 for xorShift
         for (ForkJoinTask<?> t;;) {
@@ -1816,9 +1819,10 @@ public class ForkJoinPool extends AbstractExecutorService {
             if ((t = scan(w, r)) != null)
                 // 执行扫描的，并且会执行自身的
                 w.runTask(t);
-            // 如果没有扫描到则要进行await
+            // 如果没有扫描到则要进行await，没有扫描到任务，会将当前w状态设置为非激活状态
             else if (!awaitWork(w, r))
                 break;
+            // xorshift随机数算法
             r ^= r << 13; r ^= r >>> 17; r ^= r << 5; // xorshift
         }
     }
@@ -1839,7 +1843,9 @@ public class ForkJoinPool extends AbstractExecutorService {
      * @param r a random seed
      * @return a task, or null if none found
      */
-    // 先扫描或窃取别人的任务，可能包括自己的，如果返回null，表示任务已经没有了
+    /**
+     * 先扫描或窃取别人的任务，可能包括自己的，如果返回null，表示任务已经没有了，如果返回null，则表示当前线程已经变成非激活状态，并且ctl的低32位是自己
+     */
     private ForkJoinTask<?> scan(WorkQueue w, int r) { // w为线程所在的队列，r为随机种子
         // ws是工作队列，m是工作队列长度-1，w是工作所在的队列
         WorkQueue[] ws; int m;
@@ -1868,12 +1874,12 @@ public class ForkJoinPool extends AbstractExecutorService {
                                     q.base = b + 1;
                                     if (n < -1)       // signal others 如果n小于-1，表示还有很多task在其中
                                         signalWork(ws, q);
-                                    // 返回task
+                                    // 返回task（终点方法，表示找到task）
                                     return t;
                                 }
                             }
                             else if (oldSum == 0 &&   // try to activate
-                                     w.scanState < 0)//在判断一次线程scan状态，如果小于0则唤醒一个线程
+                                     w.scanState < 0)//在判断一次线程scan状态，如果小于0则唤醒一个线程（当前线程是非激活状态了，那么需要重新唤醒一个）
                                 tryRelease(c = ctl, ws[m & (int)c], AC_UNIT);
                         }
                         if (ss < 0)                   // refresh
@@ -1884,6 +1890,7 @@ public class ForkJoinPool extends AbstractExecutorService {
                         origin = k = r & m;           // move and rescan
                         //重新赋值sum
                         oldSum = checkSum = 0;
+                        // 任务没偷到，重新来一次
                         continue;
                     }
                     checkSum += b;
@@ -1898,6 +1905,7 @@ public class ForkJoinPool extends AbstractExecutorService {
                             break; // 下一轮扫描再跳出当前循环
                         // 下面是将当前线程变成inactivate并且将ctl的activecount数量减1，同时将当前线程的scanState更新到ctl的低32位中去，并且将之前的32位设置为当前线程的pred节点
                         int ns = ss | INACTIVE;       // try to inactivate
+                        // 活跃-1，但是当前线程还在活跃状态，后续要处理掉
                         long nc = ((SP_MASK & ns) |
                                    (UC_MASK & ((c = ctl) - AC_UNIT)));
                         w.stackPred = (int)c;         // hold prev stack top
@@ -1929,13 +1937,23 @@ public class ForkJoinPool extends AbstractExecutorService {
      * @param r a random seed (for spins)
      * @return false if the worker should terminate
      */
+    /**
+     * 重点方法
+     * awaitWork的前提是w的scanState是负的，表示暂时不需要这个队列去执行任务
+     * @param w
+     * @param r
+     * @return
+     */
     private boolean awaitWork(WorkQueue w, int r) {
+        // w.qlock一般是在线程池关闭或者自己取消注册的时候才会变成-1，这种情况下就不需要进行await
         if (w == null || w.qlock < 0)                 // w is terminating
             return false;
-        for (int pred = w.stackPred, spins = SPINS, ss;;) {
-            if ((ss = w.scanState) >= 0)
+        // pred是上一个stackPred
+        for (int pred = w.stackPred, spins = SPINS, ss;;) {// spins初始化为0
+            if ((ss = w.scanState) >= 0) // scanState大于0表示线程还在激活状态，可能是被唤醒去处理任务，理论上执行到这里一般不会是激活状态
                 break;
-            else if (spins > 0) {
+            else if (spins > 0) {// 默认值是0（待分析）
+                // 随机数混淆
                 r ^= r << 6; r ^= r >>> 21; r ^= r << 7;
                 if (r >= 0 && --spins == 0) {         // randomize spins
                     WorkQueue v; WorkQueue[] ws; int s, j; AtomicLong sc;
@@ -1948,16 +1966,21 @@ public class ForkJoinPool extends AbstractExecutorService {
             }
             else if (w.qlock < 0)                     // recheck after spins
                 return false;
-            else if (!Thread.interrupted()) {
+            else if (!Thread.interrupted()) { // 没有被中断才执行这个，为什么要判断这个？
+                // c是ctl，
                 long c, prevctl, parkTime, deadline;
+                // 获取实际active count线程数量（ctl高16位+线程总数）
                 int ac = (int)((c = ctl) >> AC_SHIFT) + (config & SMASK);
+                // ac一般不会小于0，至少等于0，判断线程池状态是否是关闭状态
                 if ((ac <= 0 && tryTerminate(false, false)) ||
                     (runState & STOP) != 0)           // pool terminating
+                    // 如果线程池是terminating状态，则进行返回，不对当前线程做任何处理
                     return false;
-                if (ac <= 0 && ss == (int)c) {        // is last waiter
-                    prevctl = (UC_MASK & (c + AC_UNIT)) | (SP_MASK & pred);
+                // ac 等于0 并且ss等于 （int）c表示当前线程是最后一个waiter
+                if (ac <= 0 && ss == (int)c) {        // is last waiter,最后一个不能是非激活
+                    prevctl = (UC_MASK & (c + AC_UNIT)) | (SP_MASK & pred); //再增加一个线程？
                     int t = (short)(c >>> TC_SHIFT);  // shrink excess spares
-                    if (t > 2 && U.compareAndSwapLong(this, CTL, c, prevctl))
+                    if (t > 2 && U.compareAndSwapLong(this, CTL, c, prevctl)) // 无法理解？ 判断什么，要做什么
                         return false;                 // else use timed wait
                     parkTime = IDLE_TIMEOUT * ((t >= 0) ? 1 : 1 - t);
                     deadline = System.nanoTime() + parkTime - TIMEOUT_SLOP;
@@ -2360,6 +2383,12 @@ public class ForkJoinPool extends AbstractExecutorService {
      * if no work and no active workers
      * @param enable if true, enable shutdown when next possible
      * @return true if now terminating or terminated
+     */
+    /**
+     * 基于now和enable来判断线程池状态，以及处理线程池状态
+     * @param now
+     * @param enable
+     * @return
      */
     private boolean tryTerminate(boolean now, boolean enable) {
         int rs;
