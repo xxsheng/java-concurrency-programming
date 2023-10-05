@@ -173,6 +173,7 @@ public class ForkJoinWorkerThread extends Thread {
             Throwable exception = null;
             try {
                 onStart();
+                // 循环执行任务
                 pool.runWorker(workQueue);
             } catch (Throwable ex) {
                 // 捕获执行异常
@@ -184,6 +185,7 @@ public class ForkJoinWorkerThread extends Thread {
                     if (exception == null)
                         exception = ex;
                 } finally {
+                    // 方法执行完或者发生异常都要取消注册
                     pool.deregisterWorker(this, exception);
                 }
             }

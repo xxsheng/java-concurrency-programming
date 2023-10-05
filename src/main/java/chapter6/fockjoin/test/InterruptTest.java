@@ -9,6 +9,7 @@ public class InterruptTest {
         Thread thread = new Thread(() -> {
             try {
 
+
                 System.out.println("thread interrupt :" + Thread.currentThread().isInterrupted());
                 TimeUnit.SECONDS.sleep(4);
             } catch (InterruptedException e) {
